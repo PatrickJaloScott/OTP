@@ -3,6 +3,7 @@ package metropolia.patricsc.otp.dblocalization;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 
+import java.io.*;
 import java.sql.*;
 
 public class HelloController {
@@ -25,12 +26,20 @@ public class HelloController {
 
     private static final String DB_url = "jdbc:mysql://localhost:3306/db_localize";
     private static final String DB_username = "root";
-    private static final String DB_password = "";
+    private static String DB_password = "";
 
     private static final String[] langs = {"English", "Spanish", "French", "Chinese"};
 
     @FXML
     private void initialize() {
+        try (InputStream is = getClass().getResourceAsStream("pwd");
+                BufferedReader br = new BufferedReader(new InputStreamReader(is))){
+            DB_password = br.readLine();
+        } catch (IOException e) {
+            System.out.println("Could not find password file 'pwd'.\n" +
+                    "Check the directory src/main/resources/.../dblocalization/");
+        }
+
         languageSelector.getItems().addAll(langs);
         languageSelector.setValue(langs[0]);
         languageSelector.setOnAction(event -> changeLanguage());
@@ -77,21 +86,18 @@ public class HelloController {
 
     @FXML
     private void saveNewTitle() {
-        String newTitle = tfNewTitle.getText();
-        String newTranslation = tfNewTranslation.getText();
-        String currentLanguageCode = getLanguageCode(languageSelector.getValue());
         String query = "INSERT INTO translations (Key_name, Language_code, translation_text) VALUES (?,?,?)";
         try (Connection conn = DriverManager.getConnection(DB_url, DB_username, DB_password);
              PreparedStatement stmt = conn.prepareStatement(query)) {
-            stmt.setString(1, newTitle);
-            stmt.setString(2, currentLanguageCode);
-            stmt.setString(3, newTranslation);
+            stmt.setString(1, tfNewTitle.getText());
+            stmt.setString(2, getLanguageCode(languageSelector.getValue()));
+            stmt.setString(3, tfNewTranslation.getText());
 
             stmt.executeUpdate();
 
             tfNewTitle.setText("");
             tfNewTranslation.setText("");
-            fetchLocalizedData(currentLanguageCode);
+            fetchLocalizedData(getLanguageCode(languageSelector.getValue()));
         } catch (SQLException sqlException) {
             sqlException.printStackTrace();
         }
